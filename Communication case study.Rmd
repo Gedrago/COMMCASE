@@ -1,0 +1,89 @@
+---
+title: "Untitled"
+author: ""
+date: ""
+output: 
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  html_document:
+    fig_height: 3
+    fig_width: 5
+  word_document:
+    fig_height: 3
+    fig_width: 5
+---
+
+```{r, setup, include=FALSE}
+require(mosaic)   # Load additional packages here 
+
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+trellis.par.set(theme=theme.mosaic()) # change default color scheme for lattice
+knitr::opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small")   # slightly smaller font for code
+```
+ 
+```{r}
+###load packages 
+library(readr)
+library(mice)
+require(mosaic)
+library(car)
+
+### reading the data and renaming the variables
+data1 <- read.table("http://pmatheson.people.amherst.edu/Pima.dat", sep=",")
+data1 <- rename(data1, "PREG" = V1, "PLASMA"=V2,"BP"= V3,"THICK"=V4,"INSULIN"=V5,"BODY"=V6,"PEDIGREE"=V7,"AGE"=V8,"RESPONSE"=V9) 
+
+###creating new colums INSULIN22 and THICK22 to replace the 0's to the median 
+data1["INSULIN22"] <- ifelse(data1$INSULIN!=0, data1$INSULIN, 125)
+data1["THICK22"] <- ifelse(data1$THICK!=0, data1$THICK, 29)
+
+###changing the 0's to NA's 
+data1["INSULIN"] <- ifelse(data1$INSULIN==0, data1$INSULIN==NA, data1$INSULIN)
+data1["BODY"] <- ifelse(data1$BODY==0, data1$BODY==NA, data1$BODY) 
+data1["BP"] <- ifelse(data1$BP==0, data1$BP==NA, data1$BP)
+data1["THICK"] <- ifelse(data1$THICK==0, data1$THICK==NA, data1$THICK)
+data1["PLASMA"] <- ifelse(data1$PLASMA==0, data1$PLASMA==NA, data1$PLASMA)
+View(data1)
+
+
+###finding the correlation matrix 
+cormatrix <- cor(data1)
+cormatrix 
+round(cormatrix, 2)
+ 
+###checking for multicollinearity  
+model12 <- glm(RESPONSE ~ AGE+PREG+PLASMA+BP+THICK+ INSULIN+BODY+PEDIGREE, data=data1 )
+summary(model12)
+vif(model12)  # 
+ 
+ 
+###to find which variables are missing in the same row
+md.pattern (data1) 
+
+###Sample logistic models 
+fn1 <- glm(RESPONSE ~ AGE , data= data1)
+summary(fn1)
+fmodel1 <- glm(RESPONSE~ PLASMA + BODY ,data= data1)
+summary(fmodel1)
+fmodel2 <- glm(RESPONSE~INSULIN * BP ,data= data1)
+summary(fmodel2)
+fmodel3 <- glm(RESPONSE~BODY,data= data1)
+summary(fmodel3)
+```
+
+```{r}
+# just manualing tallying the variables 
+tally(~data1$THICK) #227
+tally(~data1$PREG)#111 but understandable 
+tally(~data1$PLASMA) #5
+tally(~data1$BP) #35
+tally(~data1$INSULIN) #374
+tally(~data1$BODY) #11
+tally(~data1$PEDIGREE) #0
+tally(~data1$AGE)
+tally(~data1$RESPONSE) #response 
+```
+
+
