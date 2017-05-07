@@ -10,6 +10,9 @@ library(readr)
 library(mosaic)
 library(reshape)
 library(ggplot2)
+library(Rfit)
+library(lmtest)
+library(survey)
 ```
 ```{r}
 pima<-read.table("http://pmatheson.people.amherst.edu/Pima.dat",sep=",")
@@ -30,5 +33,65 @@ intfull<-glm(RESPONSE~ .+BP*INSULIN+PLASMA*PEDIGREE, family=binomial(logit), dat
 summary(intfull)
 FINAL<-glm(RESPONSE~ BP+PLASMA+PRG+BODY+PLASMA*PEDIGREE, family=binomial(logit), data=pima)
 summary(FINAL)
-```
 
+summary(pima)
+```
+```{r}
+data1 <- read.table("http://pmatheson.people.amherst.edu/Pima.dat", sep=",")
+data1 <- dplyr::rename(data1, "PREG" = V1, "PLASMA"=V2,"BP"= V3,"THICK"=V4,"INSULIN"=V5,"BODY"=V6,"PEDIGREE"=V7,"AGE"=V8,"RESPONSE"=V9) 
+
+###creating new colums INSULIN22 and THICK22 to replace the 0's to the median 
+data1["INSULIN22"] <- ifelse(data1$INSULIN!=0, data1$INSULIN, 125)
+data1["THICK22"] <- ifelse(data1$THICK!=0, data1$THICK, 29)
+
+###changing the 0's to NA's 
+data1["INSULIN"] <- ifelse(data1$INSULIN==0, data1$INSULIN==NA, data1$INSULIN)
+data1["BODY"] <- ifelse(data1$BODY==0, data1$BODY==NA, data1$BODY) 
+data1["BP"] <- ifelse(data1$BP==0, data1$BP==NA, data1$BP)
+data1["THICK"] <- ifelse(data1$THICK==0, data1$THICK==NA, data1$THICK)
+data1["PLASMA"] <- ifelse(data1$PLASMA==0, data1$PLASMA==NA, data1$PLASMA)
+View(data1)
+
+
+###finding the correlation matrix 
+cormatrix <- cor(data1)
+cormatrix 
+round(cormatrix, 2)
+
+
+####boxplotting
+boxpima<-
+####interaction ploting
+intpima<-aggregate(data1, list(data1$RESPONSE), mean, na.rm=TRUE);intpima
+intpima<-melt(as.matrix(intpima));intpima
+intpima<-intpima[-c(1,2, 19, 20), ]
+intpima <- dplyr::rename(intpima, "RESPONSE" = X1, "variables"=X2,"Means"=value)
+ggplot(intpima, aes(x=RESPONSE, y=Means))+geom_line(aes(linetype= variables, color=variables))+geom_point()
+
+
+fullmodel<-glm(RESPONSE~ ., family=binomial(logit), data=data1)
+summary(fullmodel)
+intfull<-glm(RESPONSE~ .+INSULIN22*.+BP*INSULIN+PLASMA*., family=binomial(logit), data=data1)
+summary(intfull)
+intfull<-glm(RESPONSE~ .+BP*INSULIN22+BP*INSULIN+PLASMA*PEDIGREE, family=binomial(logit), data=data1)
+summary(intfull)
+FINAL<-glm(RESPONSE~ BP+PLASMA+PRG+BODY+PLASMA*PEDIGREE, family=binomial(logit), data=data1)
+plot(FINAL)
+summary(data1)
+fn1 <- glm(RESPONSE ~ AGE , data= data1)
+summary(fn1)
+fmodel1 <- glm(RESPONSE~ PLASMA + BODY ,data= data1)
+summary(fmodel1)
+fmodel2 <- glm(RESPONSE~INSULIN * BP ,data= data1)
+summary(fmodel2)
+fmodel3 <- glm(RESPONSE~BODY,data= data1)
+summary(fmodel3)
+
+waldtest(intfull,b = coef(FINAL), Sigma = vcov(FINAL))
+wald.test.overall(FINAL)
+ 
+regTermTest(FINAL,'PLASMA')
+anova(FINAL)  
+
+https://onlinecourses.science.psu.edu/stat507/node/18
+```
