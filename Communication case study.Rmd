@@ -15,8 +15,13 @@ output:
 ---
 
 ```{r, setup, include=FALSE}
-require(mosaic)   # Load additional packages here 
-
+###load packages 
+library(readr)
+library(mice)
+require(mosaic)
+library(car)
+library(ggplot2)
+library(ggvis)
 # Some customization.  You can alter or delete as desired (if you know what you are doing).
 trellis.par.set(theme=theme.mosaic()) # change default color scheme for lattice
 knitr::opts_chunk$set(
@@ -24,13 +29,7 @@ knitr::opts_chunk$set(
   size="small")   # slightly smaller font for code
 ```
  
-```{r}
-###load packages 
-library(readr)
-library(mice)
-require(mosaic)
-library(car)
-
+```{r,eval=FALSE}
 ### reading the data and renaming the variables
 data1 <- read.table("http://pmatheson.people.amherst.edu/Pima.dat", sep=",")
 data1 <- rename(data1, "PREG" = V1, "PLASMA"=V2,"BP"= V3,"THICK"=V4,"INSULIN"=V5,"BODY"=V6,"PEDIGREE"=V7,"AGE"=V8,"RESPONSE"=V9) 
@@ -40,38 +39,41 @@ data1["INSULIN22"] <- ifelse(data1$INSULIN!=0, data1$INSULIN, 125)
 data1["THICK22"] <- ifelse(data1$THICK!=0, data1$THICK, 29)
 
 ###changing the 0's to NA's 
-data1["INSULIN"] <- ifelse(data1$INSULIN==0, data1$INSULIN==NA, data1$INSULIN)
+data1["INSULIN"] <- ifelse(data1$INSULIN==0, data1$INSULIN==NA,data1$INSULIN)
 data1["BODY"] <- ifelse(data1$BODY==0, data1$BODY==NA, data1$BODY) 
 data1["BP"] <- ifelse(data1$BP==0, data1$BP==NA, data1$BP)
 data1["THICK"] <- ifelse(data1$THICK==0, data1$THICK==NA, data1$THICK)
 data1["PLASMA"] <- ifelse(data1$PLASMA==0, data1$PLASMA==NA, data1$PLASMA)
 View(data1)
 
-
-###finding the correlation matrix 
-cormatrix <- cor(data1)
-cormatrix 
-round(cormatrix, 2)
  
 ###checking for multicollinearity  
-model12 <- glm(RESPONSE ~ AGE+PREG+PLASMA+BP+THICK+ INSULIN+BODY+PEDIGREE, data=data1 )
-summary(model12)
+model12 <- glm(RESPONSE ~ AGE+PREG+PLASMA+BP+THICK+ INSULIN+BODY+PEDIGREE,is.na,family=binomial, data=data1 )
+
 vif(model12)  # 
  
  
 ###to find which variables are missing in the same row
 md.pattern (data1) 
 
-###Sample logistic models 
-fn1 <- glm(RESPONSE ~ AGE , data= data1)
-summary(fn1)
-fmodel1 <- glm(RESPONSE~ PLASMA + BODY ,data= data1)
-summary(fmodel1)
-fmodel2 <- glm(RESPONSE~INSULIN * BP ,data= data1)
-summary(fmodel2)
-fmodel3 <- glm(RESPONSE~BODY,data= data1)
-summary(fmodel3)
+###logistic models 
+fullmodel <- glm(RESPONSE ~ AGE+ PREG+is.na(PLASMA)+is.na(BP)+THICK22+ INSULIN22+is.na(BODY)+ PEDIGREE ,family=binomial, data=data1)
+step(fullmodel,direction = "both" ) ### applying stepwise regression 
+###our final model
+modelfinal <- glm(formula = RESPONSE ~ AGE + PREG + is.na(BP) + THICK22 + INSULIN22 + PEDIGREE, family = binomial, data = data1)
+summary(modelfinal)
 ```
+
+```{r}
+###filtering who has diabetes and who does not 
+datanodi <- filter(data1, RESPONSE==0)
+datayesdi <- filter(data1, RESPONSE==1)
+###to find the mean of each variables 
+favstats(datanodi$BODY)$mean
+favstats(datayesdi$BODY)$mean 
+```
+
+ 
 
 ```{r}
 # just manualing tallying the variables 
@@ -85,5 +87,12 @@ tally(~data1$PEDIGREE) #0
 tally(~data1$AGE)
 tally(~data1$RESPONSE) #response 
 ```
+
+
+ 
+
+ 
+ 
+
 
 
